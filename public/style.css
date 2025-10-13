@@ -1,0 +1,125 @@
+#body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  margin: 0;
+  padding: 20px 0;
+}
+
+.container {
+  background-color: #fff;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 14px;
+}
+
+input[type="text"],
+input[type="password"],
+#msg,
+button {
+  width: 90%;
+  max-width: 300px;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+#userList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+#userList button {
+  width: 90%;
+  max-width: 300px;
+  text-align: left;
+  background-color: #e9ecef;
+  color: #333;
+}
+
+#userList button:hover {
+  background-color: #ced4da;
+}
+
+#chatWith {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+#messages {
+  width: 100%;
+  max-width: 350px;
+  height: 350px;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+#messages div {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+#messages div.sent {
+  background-color: #d1e7dd;
+  align-self: flex-end;
+}
+
+#messages div.received {
+  background-color: #e2e3e5;
+  align-self: flex-start;
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+#msg {
+  flex: 1;
+  max-width: 250px;
+}
+
+#send {
+  padding: 10px 16px;
+}
