@@ -100,11 +100,13 @@ button:hover {
 
 #messages div.sent {
   background-color: #d1e7dd;
+  color: #e96b04;
   align-self: flex-end;
 }
 
 #messages div.received {
   background-color: #e2e3e5;
+  color: #1c03a8;
   align-self: flex-start;
 }
 
@@ -122,4 +124,12 @@ button:hover {
 
 #send {
   padding: 10px 16px;
+}
+
+#logout {
+  background-color: #dc3545;
+}
+
+#logout:hover {
+  background-color: #c82333;
 }
