@@ -2,8 +2,10 @@ const express = require('express');
 const app = express();
 const userRouter = require("./routes/userRouter");
 const messageRouter = require("./routes/messageRouter");
+const chatRoomRouter = require("./routes/chatRoomRouter");
 const authMiddleware = require("./middleware/authMiddleware");
 const Message = require("./models/messageModel");
+const ChatRoom = require("./models/chatRoom");
 const User = require("./models/userModel");
 const jwt = require('jsonwebtoken');
 
@@ -15,9 +17,6 @@ const io = require('socket.io')(server, {
     }
 });
 
-app.use(userRouter);
-app.use(messageRouter);
-
 const cors = require("cors");
 app.use(cors());
 app.use(express.json());
@@ -25,6 +24,7 @@ app.use(express.static("../public"));
 
 app.use("/api/users", userRouter);
 app.use("/api/messages", messageRouter);
+app.use("/api/chatrooms", chatRoomRouter);
 
 io.on('connection', socket => {
     console.log('a user connected:', socket.id);
@@ -47,19 +47,60 @@ io.on('connection', socket => {
         }
     });
 
-    // Joint event
-    socket.on('join', (data) => {
-        const { userId, username } = data;
-        socket.userId = userId;
-        socket.username = username;
-        console.log(`Socket ${socket.id} joined the chat as ${username}`);
-        socket.emit('joined', { message: 'Successfully joined the chat' });
+    // Joint event - join a specific chat room
+    socket.on('join_room', async (data) => {
+        try {
+            const { chatRoomId } = data;
+            
+            // Check if user is authenticated
+            if (!socket.userId) {
+                socket.emit('error', { message: 'Authentication required' });
+                return;
+            }
+            
+            // Validate chatRoomId
+            const mongoose = require('mongoose');
+            if (!mongoose.Types.ObjectId.isValid(chatRoomId)) {
+                socket.emit('error', { message: 'Invalid chat room ID' });
+                return;
+            }
+            
+            // Check if chat room exists
+            const chatRoom = await ChatRoom.findById(chatRoomId);
+            if (!chatRoom) {
+                socket.emit('error', { message: 'Chat room not found' });
+                return;
+            }
+            
+            // Check if user is a participant
+            const isParticipant = chatRoom.participants.some(
+                p => p.userId.toString() === socket.userId
+            );
+            
+            if (!isParticipant) {
+                socket.emit('error', { message: 'You are not a participant in this chat room' });
+                return;
+            }
+            
+            // Join the room
+            socket.join(chatRoomId);
+            socket.currentChatRoom = chatRoomId;
+            console.log(`User ${socket.username} joined chat room ${chatRoomId}`);
+            socket.emit('room_joined', { 
+                message: 'Successfully joined the chat room',
+                chatRoomId: chatRoomId,
+                chatRoom: chatRoom
+            });
+        } catch (error) {
+            console.error('Error joining room:', error);
+            socket.emit('error', { message: 'Failed to join chat room' });
+        }
     });
 
     // Send message event
     socket.on('send_message', async (data) => {
         try {
-            const { receiver, content } = data;
+            const { chatRoomId, content } = data;
             
             // Check if user is authenticated
             if (!socket.userId) {
@@ -68,47 +109,50 @@ io.on('connection', socket => {
             }
 
             // Validate required fields
-            if (!receiver || !content) {
-                socket.emit('error', { message: 'Receiver and content are required' });
+            if (!chatRoomId || !content) {
+                socket.emit('error', { message: 'Chat room ID and content are required' });
                 return;
             }
 
-            // Validate ObjectId format
+            // Validate chatRoomId
             const mongoose = require('mongoose');
-            if (!mongoose.Types.ObjectId.isValid(receiver)) {
-                socket.emit('error', { message: 'Invalid receiver ID format' });
+            if (!mongoose.Types.ObjectId.isValid(chatRoomId)) {
+                socket.emit('error', { message: 'Invalid chat room ID format' });
                 return;
             }
             
-            // Check if receiver exists
-            const receiverUser = await User.findById(receiver);
-            if (!receiverUser) {
-                socket.emit('error', { message: 'Receiver not found' });
+            // Check if chat room exists
+            const chatRoom = await ChatRoom.findById(chatRoomId);
+            if (!chatRoom) {
+                socket.emit('error', { message: 'Chat room not found' });
                 return;
             }
-
-            // Check if sender and receiver are different
-            if (socket.userId === receiver) {
-                socket.emit('error', { message: 'Cannot send message to yourself' });
+            
+            // Check if sender is a participant
+            const isParticipant = chatRoom.participants.some(
+                p => p.userId.toString() === socket.userId
+            );
+            
+            if (!isParticipant) {
+                socket.emit('error', { message: 'You are not a participant in this chat room' });
                 return;
             }
 
             // Create and save the message
             const message = new Message({ 
+                chatRoom: chatRoomId,
                 sender: socket.userId, 
-                receiver, 
                 content,
                 createdAt: new Date()
             });
             
             const savedMessage = await message.save();
             
-            // Populate sender and receiver information for the response
+            // Populate sender information
             await savedMessage.populate('sender', 'username');
-            await savedMessage.populate('receiver', 'username');
 
-            // Emit to all connected clients (you can modify this to emit only to specific users)
-            io.emit('new_message', savedMessage);
+            // Emit to all users in the chat room
+            io.to(chatRoomId).emit('new_message', savedMessage);
             
             // Send success confirmation to sender
             socket.emit('message_sent', { 
@@ -122,7 +166,6 @@ io.on('connection', socket => {
             socket.emit('error', { message: 'Failed to send message' });
         }
     });
-
 
 
     // Disconnect event

@@ -1,38 +1,51 @@
 var Message = require("../models/messageModel");
+var ChatRoom = require("../models/chatRoom");
 var mongoose = require("mongoose");
 
 var messageController = {
     sendMessage: async (req, res) => {
         try {
-            const { sender, receiver, content } = req.body;
+            const { chatRoomId, content } = req.body;
+            const senderId = req.user.id; // From auth middleware
             
             // Validate required fields
-            if (!sender || !receiver || !content) {
-                return res.status(400).json({ error: "Sender, receiver, and content are required" });
+            if (!chatRoomId || !content) {
+                return res.status(400).json({ error: "Chat room ID and content are required" });
             }
             
-            // Validate ObjectId format
-            if (!mongoose.Types.ObjectId.isValid(sender) || !mongoose.Types.ObjectId.isValid(receiver)) {
-                return res.status(400).json({ error: "Invalid sender or receiver ID" });
+            // Validate chatRoomId format
+            if (!mongoose.Types.ObjectId.isValid(chatRoomId)) {
+                return res.status(400).json({ error: "Invalid chat room ID format" });
             }
             
-            // Check if sender and receiver are different
-            if (sender === receiver) {
-                return res.status(400).json({ error: "Cannot send message to yourself" });
+            // Check if chat room exists
+            const chatRoom = await ChatRoom.findById(chatRoomId);
+            if (!chatRoom) {
+                return res.status(404).json({ error: "Chat room not found" });
             }
             
+            // Check if sender is a participant in the chat room
+            const isParticipant = chatRoom.participants.some(
+                p => p.userId.toString() === senderId
+            );
+            
+            if (!isParticipant) {
+                return res.status(403).json({ error: "You are not a participant in this chat room" });
+            }
+            
+            // Create and save the message
             const newMessage = new Message({ 
-                sender, 
-                receiver, 
+                chatRoom: chatRoomId,
+                sender: senderId, 
                 content,
                 createdAt: new Date()
             });
             
             const savedMessage = await newMessage.save();
             
-            // Populate sender and receiver information
+            // Populate sender information
             await savedMessage.populate('sender', 'username');
-            await savedMessage.populate('receiver', 'username');
+            await savedMessage.populate('chatRoom');
             
             res.status(201).json({ 
                 message: "Message sent successfully",
@@ -46,19 +59,33 @@ var messageController = {
     
     getMessages: async (req, res) => {
         try {
-            const { userId } = req.params;
+            const { chatRoomId } = req.params;
+            const userId = req.user.id; // From auth middleware
             
             // Validate ObjectId format
-            if (!mongoose.Types.ObjectId.isValid(userId)) {
-                return res.status(400).json({ error: "Invalid user ID" });
+            if (!mongoose.Types.ObjectId.isValid(chatRoomId)) {
+                return res.status(400).json({ error: "Invalid chat room ID format" });
             }
             
-            const messages = await Message.find({
-                $or: [{ sender: userId }, { receiver: userId }]
-            })
-            .populate('sender', 'username')
-            .populate('receiver', 'username')
-            .sort({ createdAt: 1 }); // Sort by creation time (oldest first)
+            // Check if chat room exists
+            const chatRoom = await ChatRoom.findById(chatRoomId);
+            if (!chatRoom) {
+                return res.status(404).json({ error: "Chat room not found" });
+            }
+            
+            // Check if user is a participant
+            const isParticipant = chatRoom.participants.some(
+                p => p.userId.toString() === userId
+            );
+            
+            if (!isParticipant) {
+                return res.status(403).json({ error: "You are not a participant in this chat room" });
+            }
+            
+            // Get all messages for this chat room
+            const messages = await Message.find({ chatRoom: chatRoomId })
+                .populate('sender', 'username')
+                .sort({ createdAt: 1 }); // Sort by creation time (oldest first)
             
             res.status(200).json({
                 message: "Messages retrieved successfully",
@@ -70,36 +97,36 @@ var messageController = {
         }
     },
     
-    getConversation: async (req, res) => {
+    
+    // Get all user messages across all chat rooms (optional - for backward compatibility)
+    getAllUserMessages: async (req, res) => {
         try {
-            const { userId1, userId2 } = req.params;
+            const userId = req.user.id; // From auth middleware
             
-            // Validate ObjectId format
-            if (!mongoose.Types.ObjectId.isValid(userId1) || !mongoose.Types.ObjectId.isValid(userId2)) {
-                return res.status(400).json({ error: "Invalid user ID format" });
-            }
+            // Find all chat rooms where user is a participant
+            const chatRooms = await ChatRoom.find({
+                'participants.userId': userId
+            });
             
+            const chatRoomIds = chatRooms.map(room => room._id);
+            
+            // Get all messages from those chat rooms
             const messages = await Message.find({
-                $or: [
-                    { sender: userId1, receiver: userId2 },
-                    { sender: userId2, receiver: userId1 }
-                ]
+                chatRoom: { $in: chatRoomIds }
             })
             .populate('sender', 'username')
-            .populate('receiver', 'username')
-            .sort({ createdAt: 1 }); // Sort by creation time (oldest first)
+            .populate('chatRoom')
+            .sort({ createdAt: 1 });
             
             res.status(200).json({
-                message: "Conversation retrieved successfully",
+                message: "All messages retrieved successfully",
                 data: messages
             });
         } catch (error) {
-            console.error("Error fetching conversation:", error);
-            res.status(500).json({ error: "Error fetching conversation" });
+            console.error("Error fetching all messages:", error);
+            res.status(500).json({ error: "Error fetching messages" });
         }
     }
 };
 
 module.exports = messageController;
-
-

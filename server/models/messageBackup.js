@@ -1,17 +1,19 @@
 var mongoose = require('mongoose');
 var db = require("../config/db");
-const chatRoom = require('./chatRoom');
 
 var messageSchema = new mongoose.Schema({
-    chatRoom: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'ChatRoom'
-    },
     sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    receiver: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        }
+    ],
     content: {
         type: String,
         required: true

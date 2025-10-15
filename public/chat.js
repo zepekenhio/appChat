@@ -97,7 +97,7 @@ const messages = document.getElementById("messages");
 if (socket) {
   // Handle new messages
   socket.on('new_message', (message) => {
-    if (currentUser && message.sender._id !== currentUser.id) {
+    if (currentUser && message.sender._id !== currentUser.id && message.receiver.some(r => r._id === currentUser.id)) {
       displayMessage(message.sender.username, message.content, message.createdAt, 'received');
     }
   });
@@ -138,15 +138,15 @@ if (send) {
       return;
     }
     
-    const receiver = window.selectedReceiver;
+    const receivers = window.selectedReceivers;
     
-    if (!receiver) {
-      alert('Please select a user to chat with first');
+    if (!receivers || receivers.length === 0) {
+      alert('Please select users to chat with first');
       return;
     }
     
     if (socket) {
-      socket.emit('send_message', { receiver, content: text });
+      socket.emit('send_message', { receiver: receivers, content: text });
       displayMessage('You', text, new Date(), 'sent');
       document.getElementById("msg").value = '';
     } else {
@@ -184,7 +184,7 @@ async function loadUsers() {
       const data = await response.json();
       const userSelect = document.getElementById('userSelect');
       if (userSelect) {
-        userSelect.innerHTML = '<option value="">Select a user to chat with</option>';
+        userSelect.innerHTML = '';
         data.forEach(user => {
           if (currentUser && user._id !== currentUser.id) {
             const option = document.createElement('option');
@@ -201,9 +201,10 @@ async function loadUsers() {
 }
 
 // Load conversation history
-async function loadConversation(userId1, userId2) {
+async function loadConversation(userId1, userIds) {
   try {
-    const response = await fetch(`/api/messages/conversation/${userId1}/${userId2}`, {
+    const userIdsStr = Array.isArray(userIds) ? userIds.join(',') : userIds;
+    const response = await fetch(`/api/messages/conversation/${userId1}/${userIdsStr}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -245,17 +246,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (loadChatBtn) {
     loadChatBtn.onclick = () => {
       const userSelect = document.getElementById('userSelect');
-      const selectedUserId = userSelect.value;
-      const selectedUserName = userSelect.options[userSelect.selectedIndex].text;
+      const selectedOptions = Array.from(userSelect.selectedOptions);
+      const selectedUserIds = selectedOptions.map(option => option.value);
+      const selectedUserNames = selectedOptions.map(option => option.text);
       
-      if (selectedUserId && currentUser) {
-        document.getElementById('chatWith').textContent = `Chat with ${selectedUserName}`;
-        loadConversation(currentUser.id, selectedUserId);
+      if (selectedUserIds.length > 0 && currentUser) {
+        document.getElementById('chatWith').textContent = `Chat with ${selectedUserNames.join(', ')}`;
+        loadConversation(currentUser.id, selectedUserIds);
         
-        // Store selected user for sending messages
-        window.selectedReceiver = selectedUserId;
+        // Store selected users for sending messages
+        window.selectedReceivers = selectedUserIds;
       } else {
-        alert('Please select a user to chat with');
+        alert('Please select at least one user to chat with');
       }
     };
   }

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Rooms - AppChat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Chat Rooms</h1>
+            <button id="logout" class="btn btn-danger">Logout</button>
+        </div>
+
+        <div class="main-content">
+            <!-- Left sidebar: Chat Room List -->
+            <div class="chat-rooms-sidebar">
+                <h2>My Chat Rooms</h2>
+                <button id="createRoomBtn" class="btn btn-primary">+ Create New Room</button>
+                <div id="chatRoomsList" class="rooms-list">
+                    <!-- Chat rooms will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Right side: Chat Interface -->
+            <div class="chat-container">
+                <div id="noChatSelected" class="no-chat-selected">
+                    <h2>Select a chat room or create a new one</h2>
+                </div>
+
+                <div id="chatInterface" class="chat-interface" style="display: none;">
+                    <div class="chat-header">
+                        <h2 id="chatRoomName">Chat Room</h2>
+                        <div class="chat-actions">
+                            <button id="addParticipantBtn" class="btn btn-sm">+ Add Participant</button>
+                            <button id="viewParticipantsBtn" class="btn btn-sm">View Participants</button>
+                        </div>
+                    </div>
+
+                    <div id="messages" class="messages-container">
+                        <!-- Messages will appear here -->
+                    </div>
+
+                    <div class="input-container">
+                        <input type="text" id="msg" placeholder="Type your message..." />
+                        <button id="send" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for creating new chat room -->
+    <div id="createRoomModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create New Chat Room</h2>
+            <div class="form-group">
+                <label>Select participants:</label>
+                <select id="participantSelect" multiple size="6" class="form-control">
+                    <!-- Users will be loaded here -->
+                </select>
+                <small>Hold Ctrl/Cmd to select multiple users</small>
+            </div>
+            <button id="createRoomConfirm" class="btn btn-primary">Create Room</button>
+        </div>
+    </div>
+
+    <!-- Modal for adding participant -->
+    <div id="addParticipantModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Participant</h2>
+            <div class="form-group">
+                <label>Select user:</label>
+                <select id="newParticipantSelect" class="form-control">
+                    <!-- Users will be loaded here -->
+                </select>
+            </div>
+            <button id="addParticipantConfirm" class="btn btn-primary">Add Participant</button>
+        </div>
+    </div>
+
+    <!-- Modal for viewing participants -->
+    <div id="viewParticipantsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Participants</h2>
+            <div id="participantsList" class="participants-list">
+                <!-- Participants will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="chatRoomApp.js"></script>
+</body>
+</html>
